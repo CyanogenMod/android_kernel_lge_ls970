@@ -91,12 +91,59 @@ static int __init display_kcal_setup(char *kcal)
 
 	if (vaild_k != 'K') {
 		pr_info("kcal not calibrated yet : %d\n", vaild_k);
-		kcal_r = kcal_g = kcal_b = 255;
-		//calibration by molesarecoming
-		//kcal_r = 245;
-		//kcal_g = 244;
-		//kcal_b = 240;
+        kcal_r = 250;
+        kcal_g = 255;
+        kcal_b = 252;
 		pr_info("set to default : %d\n", kcal_r);
+	}
+
+	kcal_set_values(kcal_r, kcal_g, kcal_b);
+	return 1;
+}
+__setup("lge.kcal=", display_kcal_setup);
+#endif
+
+#ifdef CONFIG_LGE_PM
+int lge_pm_get_cable_info(struct chg_cable_info *cable_info)
+{
+	char *type_str[] = {"NOT INIT", "MHL 1K", "U_28P7K", "28P7K", "56K",
+		"100K", "130K", "180K", "200K", "220K", "270K", "330K", "620K", "910K",
+		"OPEN"};
+
+	struct pm8xxx_adc_chan_result result;
+	struct chg_cable_info *info = cable_info;
+	struct chg_cable_info_table *table;
+	int table_size = ARRAY_SIZE(pm8921_acc_cable_type_data);
+	int acc_read_value = 0;
+	int i, rc;
+	int count = 5;
+
+	if (!info) {
+		pr_err("lge_pm_get_cable_info: invalid info parameters\n");
+		return -1;
+	}
+
+	for (i = 0; i < count; i++) {
+		rc = pm8xxx_adc_mpp_config_read(PM8XXX_AMUX_MPP_12,
+				ADC_MPP_1_AMUX6, &result);
+
+		if (rc < 0) {
+			if (rc == -ETIMEDOUT) {
+				/* reason: adc read timeout, assume it is open cable */
+				info->cable_type = CABLE_NONE;
+				info->ta_ma = C_NONE_TA_MA;
+				info->usb_ma = C_NONE_USB_MA;
+				pr_err("[DEBUG] lge_pm_get_cable_info : adc read timeout \n");
+			} else {
+	    			pr_err("lge_pm_get_cable_info: adc read error - %d\n", rc);
+			}
+			return rc;
+		}
+
+		acc_read_value = (int)result.physical;
+		pr_info("%s: acc_read_value - %d\n", __func__, (int)result.physical);
+		mdelay(10);
+>>>>>>> f42ab40... final color config for pa 3.0
 	}
 
 	kcal_set_values(kcal_r, kcal_g, kcal_b);
